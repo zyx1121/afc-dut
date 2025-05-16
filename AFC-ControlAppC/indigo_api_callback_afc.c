@@ -28,6 +28,21 @@
 #include "vendor_specific.h"
 #include "wpa_ctrl.h"
 
+/**
+ * Execute a shell command and log success or failure.
+ * @param cmd The shell command to execute.
+ * @return The return value of system().
+ */
+int execute(const char *cmd) {
+    int ret = system(cmd);
+    if (ret == 0) {
+        indigo_logger(LOG_LEVEL_INFO, "Execute command: %s Success", cmd);
+    } else {
+        indigo_logger(LOG_LEVEL_ERROR, "Execute command: %s Failed", cmd);
+    }
+    return ret;
+}
+
 /* Save TLVs in afcd_configure and Send in afcd_operation */
 char server_url[64];
 char geo_area[8];
@@ -116,10 +131,15 @@ static int afcd_configure_handler(struct packet_wrapper *req, struct packet_wrap
     if (tlv) {
         memset(ca_cert, 0, sizeof(ca_cert));
         memcpy(ca_cert, tlv->value, tlv->len);
-        if (strlen(ca_cert) > 0)
+        if (strlen(ca_cert) > 0) {
             indigo_logger(LOG_LEVEL_DEBUG, "Configure root certificate");
-        else
+            execute("nvram set afc_tls_cacert=\"/data/afc_ca.pem\"");
+            execute("nvram commit");
+        } else {
             indigo_logger(LOG_LEVEL_DEBUG, "Do not configure root certificate !");
+            execute("nvram unset afc_tls_cacert");
+            execute("nvram commit");
+        }
     } else {
         indigo_logger(LOG_LEVEL_ERROR, "Missed TLV: TLV_AFC_CA_CERT");
         status = TLV_VALUE_STATUS_NOT_OK;
@@ -202,6 +222,7 @@ static int afcd_operation_handler(struct packet_wrapper *req, struct packet_wrap
         } else if (atoi(req_type) == 2) {
             indigo_logger(LOG_LEVEL_DEBUG, "Send Spectrum request with Frequency based");
         }
+        execute("afc_cli -c req");
     }
     tlv = find_wrapper_tlv_by_id(req, TLV_AFC_POWER_CYCLE);
     if (tlv) {
