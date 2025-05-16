@@ -15,19 +15,18 @@
 /* OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS                          */
 /* SOFTWARE. */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/stat.h>
 #include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "indigo_api.h"
-#include "vendor_specific.h"
-#include "utils.h"
-#include "wpa_ctrl.h"
 #include "indigo_api_callback.h"
-
+#include "utils.h"
+#include "vendor_specific.h"
+#include "wpa_ctrl.h"
 
 /* Save TLVs in afcd_configure and Send in afcd_operation */
 char server_url[64];
@@ -36,7 +35,7 @@ char ca_cert[S_BUFFER_LEN];
 
 void register_apis() {
     register_api(API_GET_CONTROL_APP_VERSION, NULL, get_control_app_handler);
-    //register_api(API_AFC_GET_MAC_ADDR, NULL, afc_get_mac_addr_handler);
+    // register_api(API_AFC_GET_MAC_ADDR, NULL, afc_get_mac_addr_handler);
     register_api(API_AFCD_CONFIGURE, NULL, afcd_configure_handler);
     register_api(API_AFCD_OPERATION, NULL, afcd_operation_handler);
     register_api(API_AFCD_GET_INFO, NULL, afcd_get_info_handler);
@@ -59,14 +58,14 @@ static int get_control_app_handler(struct packet_wrapper *req, struct packet_wra
 
 static int afcd_get_info_handler(struct packet_wrapper *req, struct packet_wrapper *resp) {
     struct tlv_hdr *tlv;
-    int freq , channel, cfi = 0;
+    int freq, channel, cfi = 0;
     char response[S_BUFFER_LEN];
 
     memset(response, 0, sizeof(response));
     /* Vendor implementation: Get current center channel and Center Frequency Index */
     channel = 39;
     cfi = 31;
-    freq = 5950 + 5*channel;
+    freq = 5950 + 5 * channel;
 
     fill_wrapper_message_hdr(resp, API_CMD_RESPONSE, req->hdr.seq);
     fill_wrapper_tlv_byte(resp, TLV_STATUS, TLV_VALUE_STATUS_OK);
@@ -76,7 +75,7 @@ static int afcd_get_info_handler(struct packet_wrapper *req, struct packet_wrapp
     snprintf(response, sizeof(response), "%d", channel);
     fill_wrapper_tlv_bytes(resp, TLV_AFC_OPER_CHANNEL, strlen(response), response);
     snprintf(response, sizeof(response), "%d", cfi);
-    fill_wrapper_tlv_bytes(resp, TLV_AFC_CENTER_FREQ_INDEX, strlen(response), response);        
+    fill_wrapper_tlv_bytes(resp, TLV_AFC_CENTER_FREQ_INDEX, strlen(response), response);
     return 0;
 }
 
@@ -96,9 +95,9 @@ static int afcd_configure_handler(struct packet_wrapper *req, struct packet_wrap
         char tlv_value[64];
         i_tlv = get_tlv_by_id(req->tlv[i]->id);
         if (i_tlv) {
-                memset(tlv_value, 0, sizeof(tlv_value));
-                memcpy(tlv_value, req->tlv[i]->value, req->tlv[i]->len);
-                indigo_logger(LOG_LEVEL_DEBUG, "TLV: %s - %s", i_tlv->name, tlv_value);
+            memset(tlv_value, 0, sizeof(tlv_value));
+            memcpy(tlv_value, req->tlv[i]->value, req->tlv[i]->len);
+            indigo_logger(LOG_LEVEL_DEBUG, "TLV: %s - %s", i_tlv->name, tlv_value);
         }
     }
 
@@ -114,7 +113,7 @@ static int afcd_configure_handler(struct packet_wrapper *req, struct packet_wrap
     }
 
     tlv = find_wrapper_tlv_by_id(req, TLV_AFC_CA_CERT);
-    if (tlv) {        
+    if (tlv) {
         memset(ca_cert, 0, sizeof(ca_cert));
         memcpy(ca_cert, tlv->value, tlv->len);
         if (strlen(ca_cert) > 0)
@@ -164,12 +163,12 @@ static int afcd_configure_handler(struct packet_wrapper *req, struct packet_wrap
             tlv = find_wrapper_tlv_by_id(req, TLV_AFC_ELLIPSE_ORIENTATION);
         } else if (atoi(geo_area) == LINEARPOLYGON) {
             tlv = find_wrapper_tlv_by_id(req, TLV_AFC_LINEARPOLY_BOUNDARY);
-        } else if (atoi(geo_area) == RADIALPOLYGON){
+        } else if (atoi(geo_area) == RADIALPOLYGON) {
             tlv = find_wrapper_tlv_by_id(req, TLV_AFC_RADIALPOLY_CENTER);
             tlv = find_wrapper_tlv_by_id(req, TLV_AFC_RADIALPOLY_BOUNDARY);
         }
     } else {
-        //indigo_logger(LOG_LEVEL_DEBUG, "Missed TLV: TLV_AFC_LOCATION_GEO_AREA");
+        // indigo_logger(LOG_LEVEL_DEBUG, "Missed TLV: TLV_AFC_LOCATION_GEO_AREA");
     }
 
     /* AFCD vendors should have their own freq_range or global op_class + channel CFI */
@@ -180,7 +179,6 @@ done:
     fill_wrapper_tlv_bytes(resp, TLV_MESSAGE, strlen(message), message);
     return 0;
 }
-
 
 static int afcd_operation_handler(struct packet_wrapper *req, struct packet_wrapper *resp) {
     struct tlv_hdr *tlv;
@@ -197,7 +195,8 @@ static int afcd_operation_handler(struct packet_wrapper *req, struct packet_wrap
         memset(req_type, 0, sizeof(req_type));
         memcpy(req_type, tlv->value, tlv->len);
         if (atoi(req_type) == 0) {
-            indigo_logger(LOG_LEVEL_DEBUG, "Send Spectrum request with Channel and Frequency based");
+            indigo_logger(LOG_LEVEL_DEBUG,
+                          "Send Spectrum request with Channel and Frequency based");
         } else if (atoi(req_type) == 1) {
             indigo_logger(LOG_LEVEL_DEBUG, "Send Spectrum request with Channel based");
         } else if (atoi(req_type) == 2) {
@@ -225,7 +224,9 @@ static int afcd_operation_handler(struct packet_wrapper *req, struct packet_wrap
     }
     tlv = find_wrapper_tlv_by_id(req, TLV_AFC_CONNECT_SP_AP);
     if (tlv) {
-        indigo_logger(LOG_LEVEL_DEBUG, "Trigger AFC DUT to initiate connection procedure between AFC DUT and SP Access Point");
+        indigo_logger(
+            LOG_LEVEL_DEBUG,
+            "Trigger AFC DUT to initiate connection procedure between AFC DUT and SP Access Point");
         /* Vendor specific */
     }
 
